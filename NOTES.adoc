@@ -33,3 +33,11 @@ CoInitializeEx(Some(null()), COINIT_APARTMENTTHREADED);
 let test: ITaskbarList3 = CoCreateInstance(&TaskbarList, None, CLSCTX_ALL)?;
 let result = (*test).AddTab(hwnd);
 ----
+
+== Example of getting RECT
+
+[rust]
+----
+let mut size_rect: RECT = Default::default();
+GetWindowRect(hwnd, &mut size_rect)?;
+----

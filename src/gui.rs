@@ -1,23 +1,23 @@
 use fltk::{
-    app,
+    app::{self, Screen},
     button::{Button, CheckButton},
-    enums::{self, Color},
+    enums::{self, Color, Event},
     frame,
-    prelude::*,
-    window::{OverlayWindow, Window},
+    window::Window,
+    prelude::*
 };
-use fltk_theme::{ColorTheme, WidgetScheme, WidgetTheme, color_themes, widget_themes};
+use fltk_theme::{ColorTheme, color_themes};
 use std::{
     error::Error,
-    ffi::c_void,
     mem,
-    ptr::{self, null, null_mut},
+    process::exit,
 };
 use windows::Win32::{
-    Foundation::{HWND, RECT},
-    UI::
-        WindowsAndMessaging::{GetWindowLongPtrW, GetWindowRect, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, WS_EX_APPWINDOW, WS_SYSMENU}
-    ,
+    Foundation::HWND,
+    UI::WindowsAndMessaging::{
+        HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+        SetWindowPos,
+    },
 };
 
 type MyCheckboxes = [CheckButton; 6];
@@ -30,7 +30,8 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
         .with_label("W11Boost")
         .with_size(480, 360)
         .center_screen();
-    // wind.set_border(false);
+
+    wind.set_border(false);
 
     let widget_theme = ColorTheme::new(color_themes::BLACK_THEME);
     widget_theme.apply();
@@ -39,8 +40,10 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
     titlebar.set_frame(enums::FrameType::FlatBox);
     titlebar.set_color(Color::from_rgb(22, 22, 22));
 
-    let mut titlebar_close =
-        Button::new(wind.width() - 32, 0, 32, 32, "X").set_frame(enums::FrameType::NoBox);
+    let mut titlebar_close = Button::new(wind.width() - 32, 0, 32, 32, "X");
+
+    titlebar_close.set_frame(enums::FrameType::NoBox);
+    titlebar_close.set_callback(move |_| exit(0));
 
     let mut apply = Button::new(
         0,
@@ -119,21 +122,45 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
     let hwnd = wind.raw_handle();
     let hwnd: HWND = unsafe { mem::transmute(hwnd) };
 
-    const WS_SYSMENU: isize = 0x80000;
-    const WS_EX_APPWINDOW: isize = 0x40000;
-    const WS_CAPTION: isize = 0xC0000;
-
     unsafe {
-        //let old_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        let new_style = WS_SYSMENU | WS_EX_APPWINDOW | WS_CAPTION;
-        let mut size_rect: RECT = Default::default();
-
-        GetWindowRect(hwnd, &mut size_rect)?;
-        SetWindowLongPtrW(hwnd, GWL_STYLE,  new_style);
-
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_SHOWWINDOW | SWP_NOMOVE | SWP_NOSIZE)?;
-        SetWindowPos(hwnd, None, size_rect.left, size_rect.top, size_rect.right - size_rect.left, size_rect.bottom - size_rect.top, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE)?;
+        // Always on top
+        SetWindowPos(
+            hwnd,
+            HWND_TOPMOST,
+            0,
+            0,
+            0,
+            0,
+            SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE,
+        )?;
     }
+
+    // Only accounts for the primary monitor
+    let screen = Screen::new(0).expect("Could not find screen");
+    wind.resize(
+        (screen.w() - wind.width()) / 2,
+        (screen.h() - wind.height()) / 2,
+        480,
+        360,
+    );
+
+    wind.handle({
+        let mut x = 0;
+        let mut y = 0;
+        move |w, ev| match ev {
+            enums::Event::Push => {
+                let coords = app::event_coords();
+                x = coords.0;
+                y = coords.1;
+                true
+            }
+            enums::Event::Drag => {
+                w.set_pos(app::event_x_root() - x, app::event_y_root() - y);
+                true
+            }
+            _ => false,
+        }
+    });
 
     app.run().unwrap();
     Ok(())
