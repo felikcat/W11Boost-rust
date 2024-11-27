@@ -1,4 +1,2 @@
 == About
-Original attempt at porting to Rust. To keep it short, it's self-torture with how I approached it.
-
-There'll be more attempts on this repository.
+A completely work in progress port to Rust using FLTK.

@@ -1,9 +1,0 @@
-pub const IDS_APP_TITLE: u32 =                      103;
-pub const IDI_W11BOOST: u16 =                       107;
-pub const IDC_W11BOOST: u16 =                       109;
-pub const IDC_APPLY_W11BOOST: u64 =                 200;
-pub const IDC_CREATE_RESTORE_POINT: u32 =           201;
-pub const IDC_LOCAL_PRIVACY: u32 =                  202;
-pub const IDC_INSTALL_MICROSOFT_STORE: u32 =        203;
-pub const IDC_INSTALL_APPX_SUPPORT: u32 =		    205;
-pub const IDC_DISABLE_SLEEP: u32 =				    207;

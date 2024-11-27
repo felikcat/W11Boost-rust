@@ -20,10 +20,6 @@ fn main() {
     </asmv3:windowsSettings>
   </asmv3:application>
 </assembly>"#);
-
-        res.set("IDS_APP_TITLE", "W11Boost");
-        res.set("IDC_W11BOOST", "W11BOOST");
-
         res.compile().unwrap();
     }
 }
