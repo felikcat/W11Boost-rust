@@ -1,5 +1,3 @@
-cargo-features = ["edition2024"]
-
 [package]
 name = "W11Boost"
 version = "1.3.0"
@@ -8,6 +6,14 @@ build = "build.rs"
 
 [dependencies]
 fltk-theme = "0.7"
+curl = "0.4.47"
+
+[dependencies.winsafe]
+version = "0.0.22"
+features = [
+    "shell",
+    "advapi"
+]
 
 [dependencies.windows]
 version = "0.58.0"

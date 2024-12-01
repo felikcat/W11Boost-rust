@@ -1,3 +1,9 @@
+pub mod appx_support;
+pub mod common;
+
+use appx_support::install_appx_support;
+use common::get_windows_path;
+use winsafe::{self as w, co::{self, KNOWNFOLDERID}, prelude::*, HrResult};
 use fltk::{
     app::{self, Screen},
     button::{Button, CheckButton},
@@ -8,9 +14,7 @@ use fltk::{
 };
 use fltk_theme::{ColorTheme, color_themes};
 use std::{
-    error::Error,
-    mem,
-    process::exit,
+    error::Error, mem, path::Path, process::exit
 };
 use windows::Win32::{
     Foundation::HWND,
@@ -162,6 +166,23 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
         }
     });
 
+    apply.set_callback(move |_| {
+        if my_checkboxes[4].is_checked() {
+            
+            
+
+            install_appx_support();
+        }
+    });
+
+    test();
+
     app.run().unwrap();
+    Ok(())
+}
+
+fn test() -> Result<(), Box<dyn Error>> {
+    let the_path = get_windows_path(&KNOWNFOLDERID::Desktop)?;
+    println!("{}", the_path);
     Ok(())
 }

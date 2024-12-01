@@ -1,2 +1,7 @@
 == About
 A completely work in progress port to Rust using FLTK.
+
+== Compiling
+. `winget install Git.Git -eh; winget install Kitware.CMake -eh`
+. Install https://visualstudio.microsoft.com/[Visual Studio] with the "Desktop development with C++" option enabled.
+. Install Rust nightly through https://rustup.rs/[rustup] and ensure the compiler is MSVC.
