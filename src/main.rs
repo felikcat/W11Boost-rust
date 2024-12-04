@@ -1,4 +1,5 @@
 mod gui;
+pub mod common;
 use fltk::dialog;
 use gui::draw_gui;
 use std::error::Error;

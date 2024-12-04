@@ -1,20 +1,23 @@
 pub mod appx_support;
-pub mod common;
+mod disable_sleep;
+mod reduce_local_data_collection;
+mod reduce_online_data_collection;
+mod defaults;
+use appx_support::*;
+use crate::common::*;
 
-use appx_support::install_appx_support;
-use common::get_windows_path;
-use winsafe::{self as w, co::{self, KNOWNFOLDERID}, prelude::*, HrResult};
+use winsafe::co::KNOWNFOLDERID;
 use fltk::{
     app::{self, Screen},
     button::{Button, CheckButton},
-    enums::{self, Color, Event},
+    enums::{self, Color},
     frame,
     window::Window,
     prelude::*
 };
 use fltk_theme::{ColorTheme, color_themes};
 use std::{
-    error::Error, mem, path::Path, process::exit
+    error::Error, mem, process::exit
 };
 use windows::Win32::{
     Foundation::HWND,
@@ -167,22 +170,20 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
     });
 
     apply.set_callback(move |_| {
-        if my_checkboxes[4].is_checked() {
-            
-            
-
-            install_appx_support();
+        if my_checkboxes[0].is_checked() {
+            reduce_local_data_collection::run().expect("reduce_local_data_collection::run failed");
         }
+        if my_checkboxes[4].is_checked() {
+            let path = get_windows_path(&KNOWNFOLDERID::Desktop).unwrap();
+            appx_support::install(path).expect("appx_support::install failed");
+        }
+        if my_checkboxes[5].is_checked() {
+            disable_sleep::run().expect("disable_sleep::run failed");
+        }
+
+        defaults::run().expect("defaults::run failed");
     });
 
-    test();
-
     app.run().unwrap();
-    Ok(())
-}
-
-fn test() -> Result<(), Box<dyn Error>> {
-    let the_path = get_windows_path(&KNOWNFOLDERID::Desktop)?;
-    println!("{}", the_path);
     Ok(())
 }

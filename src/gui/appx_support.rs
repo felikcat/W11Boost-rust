@@ -1,26 +1,31 @@
-use std::{io, time::Duration};
-use curl::easy::{Easy, Handler, WriteError};
+use curl::easy::Easy;
+use std::fs::File;
+use std::path::Path;
+use std::time::Duration;
+use std::error::Error;
+use std::io::Write;
 
-struct MyHandler;
-impl Handler for MyHandler {
-    fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
-        self.write(data);
-        Ok(data.len())
-    }
-}
-
-pub fn install_appx_support() { 
+pub fn install(mut path: String) -> Result<(), Box<dyn Error>> {
     let mut easy = Easy::new();
-    
-    easy.url("https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle").unwrap();
 
-    easy.useragent("Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6556.192 Safari/537.36").unwrap();
+    easy.url("https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")?;
 
-    easy.follow_location(true).unwrap();
-    easy.connect_timeout(Duration::from_secs(10)).unwrap();
+    easy.useragent("Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6556.192 Safari/537.36")?;
 
-    let mut my_handler = MyHandler;
-    easy.write_function(move |data| Ok(my_handler.write(data).unwrap()));
+    easy.follow_location(true)?;
+    easy.connect_timeout(Duration::from_secs(10))?;
 
+    path.push_str("\\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle");
+    let mut file = File::create(Path::new(&path)).expect("appx_support::install -> Failed to create file");
 
+    easy.write_function(move |data| {
+        file.write_all(data).unwrap();
+        Ok(data.len())
+    }).expect("appx_support::install -> Failed to write data");
+
+    easy.perform().expect("appx_support::install -> Failed to curl perform");
+
+    std::process::Command::new(r#"(powershell.exe Add-AppxPackage ([Environment]::GetFolderPath("Desktop") + "\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"))"#);
+
+    Ok(())
 }

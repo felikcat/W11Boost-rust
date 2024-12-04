@@ -12,7 +12,8 @@ curl = "0.4.47"
 version = "0.0.22"
 features = [
     "shell",
-    "advapi"
+    "advapi",
+    "kernel"
 ]
 
 [dependencies.windows]
