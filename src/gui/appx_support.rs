@@ -1,9 +1,10 @@
 use curl::easy::Easy;
-use std::fs::File;
-use std::path::Path;
-use std::time::Duration;
 use std::error::Error;
+use std::fs::File;
 use std::io::Write;
+use std::path::Path;
+use std::process::Command;
+use std::time::Duration;
 
 pub fn install(mut path: String) -> Result<(), Box<dyn Error>> {
     let mut easy = Easy::new();
@@ -15,17 +16,26 @@ pub fn install(mut path: String) -> Result<(), Box<dyn Error>> {
     easy.follow_location(true)?;
     easy.connect_timeout(Duration::from_secs(10))?;
 
-    path.push_str("\\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle");
-    let mut file = File::create(Path::new(&path)).expect("appx_support::install -> Failed to create file");
+    path.push_str(r"\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle");
+    let mut file =
+        File::create(Path::new(&path)).expect("appx_support::install -> Failed to create file");
 
     easy.write_function(move |data| {
         file.write_all(data).unwrap();
         Ok(data.len())
-    }).expect("appx_support::install -> Failed to write data");
+    })
+    .expect("appx_support::install -> Failed to write data");
 
-    easy.perform().expect("appx_support::install -> Failed to curl perform");
+    easy.perform()
+        .expect("appx_support::install -> Failed to curl perform");
 
-    std::process::Command::new(r#"(powershell.exe Add-AppxPackage ([Environment]::GetFolderPath("Desktop") + "\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"))"#);
+    Command::new("powershell.exe")
+        .args([
+            "-Command",
+            r#"Add-AppxPackage ([Environment]::GetFolderPath("Desktop") + "\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle""#
+        ])
+        .output()
+        .expect("appx_support::install -> Failed to install the msixbundle");
 
     Ok(())
 }

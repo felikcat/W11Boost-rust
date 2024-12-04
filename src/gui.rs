@@ -1,31 +1,32 @@
 pub mod appx_support;
+mod defaults;
 mod disable_sleep;
 mod reduce_local_data_collection;
 mod reduce_online_data_collection;
-mod defaults;
-use appx_support::*;
+mod create_system_restore_point;
 use crate::common::*;
 
-use winsafe::co::KNOWNFOLDERID;
 use fltk::{
     app::{self, Screen},
     button::{Button, CheckButton},
     enums::{self, Color},
     frame,
+    prelude::*,
     window::Window,
-    prelude::*
 };
 use fltk_theme::{ColorTheme, color_themes};
 use std::{
-    error::Error, mem, process::exit
+    error::Error,
+    mem,
+    process::{Command, exit},
 };
 use windows::Win32::{
     Foundation::HWND,
     UI::WindowsAndMessaging::{
-        HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
-        SetWindowPos,
+        HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowPos,
     },
 };
+use winsafe::co::KNOWNFOLDERID;
 
 type MyCheckboxes = [CheckButton; 6];
 
@@ -170,8 +171,22 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
     });
 
     apply.set_callback(move |_| {
+        // Has to be first!
+        if my_checkboxes[2].is_checked() {
+            create_system_restore_point::run()
+                .expect("create_system_restore_point::run failed");
+        }
         if my_checkboxes[0].is_checked() {
             reduce_local_data_collection::run().expect("reduce_local_data_collection::run failed");
+        }
+        if my_checkboxes[1].is_checked() {
+            reduce_online_data_collection::run()
+                .expect("reduce_online_data_collection::run failed");
+        }
+        if my_checkboxes[3].is_checked() {
+            Command::new("wsreset.exe")
+                .output()
+                .expect("wsreset.exe failed to execute");
         }
         if my_checkboxes[4].is_checked() {
             let path = get_windows_path(&KNOWNFOLDERID::Desktop).unwrap();

@@ -1,6 +1,8 @@
 == About
 A completely work in progress port to Rust using FLTK.
 
+The code used to elevate to TrustedInstaller is a Rust port of https://github.com/mbcdev/RunAsTrustedInstaller[mbcdev's RunAsTrustedInstaller].
+
 == Compiling
 . `winget install Git.Git -eh; winget install Kitware.CMake -eh`
 . Install Rust nightly through https://rustup.rs/[rustup] and ensure the compiler is MSVC. If it asks to "Quick install via the Visual Studio Community installer", do so.
