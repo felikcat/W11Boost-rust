@@ -1,12 +1,17 @@
 use curl::easy::Easy;
+use winsafe::co::KNOWNFOLDERID;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
+use crate::common::*;
 
-pub fn install(mut path: String) -> Result<(), Box<dyn Error>> {
+pub fn install() -> Result<(), Box<dyn Error>> {
+    let desktop_dir = get_windows_path(&KNOWNFOLDERID::PublicDesktop)?;
+    let mut path = PathBuf::from(desktop_dir);
+
     let mut easy = Easy::new();
 
     easy.url("https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")?;
@@ -16,7 +21,7 @@ pub fn install(mut path: String) -> Result<(), Box<dyn Error>> {
     easy.follow_location(true)?;
     easy.connect_timeout(Duration::from_secs(10))?;
 
-    path.push_str(r"\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle");
+    path.push("Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle");
     let mut file =
         File::create(Path::new(&path)).expect("appx_support::install -> Failed to create file");
 
@@ -32,7 +37,7 @@ pub fn install(mut path: String) -> Result<(), Box<dyn Error>> {
     Command::new("powershell.exe")
         .args([
             "-Command",
-            r#"Add-AppxPackage ([Environment]::GetFolderPath("Desktop") + "\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle""#
+            r#"Add-AppxPackage ([Environment]::GetFolderPath("CommonDesktopDirectory") + "\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle""#
         ])
         .output()
         .expect("appx_support::install -> Failed to install the msixbundle");

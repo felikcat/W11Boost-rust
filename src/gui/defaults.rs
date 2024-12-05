@@ -398,8 +398,11 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     )?;
 
     // Random disconnection fix for specific network adapters, such as Intel's I225-V.
-    Command::new(r#"powershell.exe Set-NetAdapterAdvancedProperty -Name '*' -DisplayName 'Wait for Link' -RegistryValue 0"#)
-        .output().expect("Setting network adapter advanced property failed");
+    Command::new("powershell.exe")
+    .args([
+        "-Command",
+        "Set-NetAdapterAdvancedProperty -Name '*' -DisplayName 'Wait for Link' -RegistryValue 0"
+    ]).output().expect("Setting network adapter advanced property failed");
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 use crate::common::*;
 use std::error::Error;
 use windows::Win32::System::Restore::*;
-use winsafe::{self, HKEY, co, prelude::*};
+use winsafe::{self, HKEY, prelude::*};
 
 fn create_restore_point() -> Result<(), Box<dyn Error>> {
     let mut smgr_status: STATEMGRSTATUS = Default::default();

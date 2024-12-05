@@ -1,7 +1,8 @@
 use chrono::{Datelike, Timelike, Utc};
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::{error::Error, fs::create_dir_all};
+use std::error::Error;
+use std::path::PathBuf;
 
 use winsafe::{
     self as w, HKEY, RegistryValue,
@@ -32,21 +33,20 @@ pub fn set_dword(
             None,
         )
         .expect(&format!(
-            "Failed to open a DWORD in key: {} -> {} -> {}",
+            "Failed to open a DWORD in key: {}\\{}\\{}",
             hkey_text, o_subkey, value_name
         ));
     subkey
-        .RegSetValueEx(Some(value_name), RegistryValue::Dword(value))
+        .RegSetValueEx(Some(value_name), RegistryValue::Dword(value.clone()))
         .expect(&format!(
-            "Failed to set a DWORD in key: {} -> {} -> {}",
-            hkey_text, o_subkey, value_name
+            "Failed to set a DWORD in key: {}\\{}\\{} -> {}",
+            hkey_text, o_subkey, value_name, value
         ));
-
-    log_registry(hkey, o_subkey, value_name, "DWORD").expect(&format!(
-        "Failed to log a DWORD change for key: {} -> {} -> {}",
-        hkey_text, o_subkey, value_name
-    ));
-    Ok(())
+        
+    match log_registry(hkey, o_subkey, value_name, &value.to_string(), "DWORD") {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to log DWORD change for key: {}\\{}\\{} -> {} -> Error: {}", hkey_text, o_subkey, value_name, value, e).into()),
+    }
 }
 
 pub fn set_string(
@@ -67,20 +67,20 @@ pub fn set_string(
             None,
         )
         .expect(&format!(
-            "Failed to open String key: {} -> {} -> {}",
+            "Failed to open String key: {}\\{}\\{}",
             hkey_text, o_subkey, value_name
         ));
     let value = value.to_string();
     subkey
-        .RegSetValueEx(Some(value_name), RegistryValue::Sz(value))
+        .RegSetValueEx(Some(value_name), RegistryValue::Sz(value.clone()))
         .expect(&format!(
-            "Failed to set String value in key: {} -> {} -> {}",
+            "Failed to set String value in key: {}\\{}\\{}",
             hkey_text, o_subkey, value_name
         ));
 
-    log_registry(hkey, o_subkey, value_name, "String").expect(&format!(
-        "Failed to log String change for key: {} -> {} -> {}",
-        hkey_text, o_subkey, value_name
+    log_registry(hkey, o_subkey, value_name, &value, "String").expect(&format!(
+        "Failed to log String change for key: {}\\{}\\{} -> {}",
+        hkey_text, o_subkey, value_name, value
     ));
     Ok(())
 }
@@ -95,11 +95,11 @@ pub fn remove_subkey(hkey: &HKEY, subkey: &str) -> Result<(), Box<dyn Error>> {
         Err(e) => Err(Box::new(e)),
     }
     .expect(&format!(
-        "Failed to delete subkey: {} -> {}",
+        "Failed to delete subkey: {}\\{}",
         hkey_text, o_subkey
     ));
 
-    log_registry(hkey, o_subkey, "->", "Removed")?;
+    log_registry(hkey, o_subkey, "->", "","Removed")?;
     Ok(())
 }
 
@@ -119,18 +119,25 @@ fn log_registry(
     hkey: &HKEY,
     subkey: &str,
     value_name: &str,
+    value: &str,
     type_name: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let hkey_text = get_hkey_text(hkey).unwrap();
+    let hkey_text = get_hkey_text(hkey)?;
 
-    let mut log_directory = get_windows_path(&KNOWNFOLDERID::Desktop)?;
-    log_directory.push_str(r"\W11Boost Logs");
+    // Can't use &KNOWNFOLDERID::Desktop because we're running as TrustedInstaller.
+    let desktop_dir = get_windows_path(&KNOWNFOLDERID::PublicDesktop)?;
+    let mut log_path = PathBuf::from(desktop_dir);
+    log_path.push("W11Boost Logs");
 
-    create_dir_all(&log_directory)?;
+    if !log_path.exists() {
+        fs::create_dir_all(&log_path).map_err(|e| {
+            format!("Failed to create log directory: {} - {}", log_path.display(), e)
+        })?;
+    }
 
     let now = Utc::now();
     let time_info = format!(
-        "{}/{}/{} {}:{}:{}",
+        "{:02}/{:02}/{} {:02}:{:02}:{:02}",
         now.day(),
         now.month(),
         now.year(),
@@ -140,18 +147,32 @@ fn log_registry(
     );
 
     let log_entry = format!(
-        "{} -> {} -> {} -> {} -> {}\n",
-        time_info, hkey_text, subkey, value_name, type_name
+        "{} -> {}\\{}\\{}\\{} -> {}\n",
+        time_info, hkey_text, subkey, value_name, type_name, value
     );
 
-    log_directory.push_str(r"\Registry.log");
+    log_path.push("Registry.log");
 
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&log_directory)?;
+        .open(&log_path)
+        .map_err(|e| {
+            format!(
+                "Failed to open/create log file: {} - {}",
+                log_path.display(),
+                e
+            )
+        })?;
 
-    file.write_all(log_entry.as_bytes())?;
+    // Write log entry with explicit error handling
+    file.write_all(log_entry.as_bytes()).map_err(|e| {
+        format!(
+            "Failed to write to log file: {} - {}",
+            log_path.display(),
+            e
+        )
+    })?;
 
     Ok(())
 }

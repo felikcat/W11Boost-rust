@@ -13,7 +13,7 @@ use windows::Win32::System::Services::{
     SERVICE_STATUS_PROCESS, SERVICE_STOPPED, StartServiceW,
 };
 use windows::core::w;
-use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, INVALID_HANDLE_VALUE};
+use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
 use windows_sys::Win32::Security::{
     DuplicateTokenEx, ImpersonateLoggedOnUser, SECURITY_ATTRIBUTES, SecurityImpersonation,
     TOKEN_ALL_ACCESS, TOKEN_DUPLICATE, TokenImpersonation,
@@ -110,8 +110,6 @@ fn start_trusted_installer_service() -> Result<u32, Box<dyn Error>> {
     .expect("Failed to open TrustedInstaller service");
 
     while attempts > 0 {
-        let status = SERVICE_STATUS_PROCESS::default();
-
         unsafe {
             let mut buffer: [u8; mem::size_of::<SERVICE_STATUS_PROCESS>()] =
                 [0; mem::size_of::<SERVICE_STATUS_PROCESS>()];
@@ -192,9 +190,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             &mut process_info,
         );
     }
+
     match draw_gui() {
         Ok(_) => println!("draw_gui() exited successfully"),
         Err(e) => dialog::alert(0, 0, &format!("W11Boost -> draw_gui() failed: {}", e)),
     }
+
     Ok(())
 }

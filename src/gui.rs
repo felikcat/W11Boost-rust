@@ -1,18 +1,12 @@
 pub mod appx_support;
+mod create_system_restore_point;
 mod defaults;
 mod disable_sleep;
 mod reduce_local_data_collection;
 mod reduce_online_data_collection;
-mod create_system_restore_point;
-use crate::common::*;
 
 use fltk::{
-    app::{self, Screen},
-    button::{Button, CheckButton},
-    enums::{self, Color},
-    frame,
-    prelude::*,
-    window::Window,
+    app::{self, Screen}, button::{Button, CheckButton}, draw::{self}, enums::{self, Color}, frame::{self}, prelude::*, widget::Widget, window::Window
 };
 use fltk_theme::{ColorTheme, color_themes};
 use std::{
@@ -26,8 +20,6 @@ use windows::Win32::{
         HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowPos,
     },
 };
-use winsafe::co::KNOWNFOLDERID;
-
 type MyCheckboxes = [CheckButton; 6];
 
 pub fn draw_gui() -> Result<(), Box<dyn Error>> {
@@ -117,12 +109,34 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
         ),
     ];
 
-    for checkbox in &mut my_checkboxes[0..6] {
+    for checkbox in &mut my_checkboxes {
         checkbox.set_label_font(enums::Font::by_name(&font));
         checkbox.set_label_size(16);
     }
 
     my_checkboxes[2].set_value(true);
+
+    let mut frame0 = Widget::default()
+        .with_size(wind.width(), wind.height() - titlebar.height())
+        .with_pos(0, titlebar.height());
+    frame0.set_frame(enums::FrameType::BorderBox);
+    frame0.draw( move |f| {
+        let label = f.label();
+        let txt = label.split("  ").nth(0).unwrap();
+        let x = f.x();
+        let y = f.y();
+        let w = f.w();
+        let h = f.h();
+
+        draw::push_clip(x, y, w, h);
+        draw::draw_box(f.frame(), x, y, w, h, f.color());
+        draw::set_draw_color(f.label_color());
+        draw::set_font(enums::Font::by_name(&font), 16);
+        draw::draw_text2(txt, x, y - 16, w, h, f.align());
+        draw::pop_clip();
+    });
+    frame0.set_label("Applying W11Boost, please wait...");
+    frame0.hide();
 
     wind.end();
     wind.show();
@@ -171,10 +185,16 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
     });
 
     apply.set_callback(move |_| {
+        frame0.show();
+        frame0.top_window();
+
+        // Force window to redraw to display frame0.
+        app::flush();
+        app::wait();
+        
         // Has to be first!
         if my_checkboxes[2].is_checked() {
-            create_system_restore_point::run()
-                .expect("create_system_restore_point::run failed");
+            create_system_restore_point::run().expect("create_system_restore_point::run failed");
         }
         if my_checkboxes[0].is_checked() {
             reduce_local_data_collection::run().expect("reduce_local_data_collection::run failed");
@@ -189,14 +209,16 @@ pub fn draw_gui() -> Result<(), Box<dyn Error>> {
                 .expect("wsreset.exe failed to execute");
         }
         if my_checkboxes[4].is_checked() {
-            let path = get_windows_path(&KNOWNFOLDERID::Desktop).unwrap();
-            appx_support::install(path).expect("appx_support::install failed");
+            appx_support::install().expect("appx_support::install failed");
         }
         if my_checkboxes[5].is_checked() {
             disable_sleep::run().expect("disable_sleep::run failed");
         }
 
         defaults::run().expect("defaults::run failed");
+
+        // Does not require a manual redraw.
+        frame0.hide();
     });
 
     app.run().unwrap();
